@@ -6,10 +6,8 @@ from enum import Enum
 
 class Squares(Enum):
     """
-    Args:
-        Enum (int): all the positions in a chess board enumerated
+    All the positions in a chess board enumerated as integers
     """
-
     a1, b1, c1, d1, e1, f1, g1, h1 = 0, 1, 2, 3, 4, 5, 6, 7
     a2, b2, c2, d2, e2, f2, g2, h2 = 8, 9, 10, 11, 12, 13, 14, 15
     a3, b3, c3, d3, e3, f3, g3, h3 = 16, 17, 18, 19, 20, 21, 22, 23
@@ -22,20 +20,16 @@ class Squares(Enum):
 
 class Colors(Enum):
     """
-    Args:
-        Enum (int): chess piece colors
+    side of a chess piece enumerated as integers
     """
-
     BLACK = 0
     WHITE = 1
 
 
 class Pieces(Enum):
     """
-    Args:
-        Enum (int): chess piece types
+    chess pieces' type enumerated as integers
     """
-
     PAWN = 0
     ROOK = 1
     NKNIGHT = 2
@@ -83,6 +77,16 @@ class Board:
             (Pieces.KING, Colors.WHITE): 1 << Squares.e1.value,
         }
 
+    def get_pieces(self, piece_type: Pieces, piece_color: Colors):
+        """
+        get all the pieces of a certain type and color
+        Args:
+            piece_type (Pieces): the type of the piece 
+            piece_color (Colors): the side of the piece
+        """
+        return bin(self.bitboards[(piece_type, piece_color)])
+
+
     def print_board(self):
         """
         print the current board that is being represented in the bitboard
@@ -110,3 +114,8 @@ class Board:
                 self.bitboards[(piece_type, piece_color)] ^= 1 << start_square.value
                 self.bitboards[(piece_type, piece_color)] |= 1 << end_square.value
                 break
+
+
+board = Board()
+print(board.get_pieces(Pieces.PAWN, Colors.BLACK))
+
