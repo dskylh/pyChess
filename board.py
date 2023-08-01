@@ -3,11 +3,21 @@ main board representation module
 """
 from enum import Enum
 
+SO_WEST = -9
+SOUTH = -8
+SO_EAST = -7
+WEST = -1
+EAST = 1
+NO_EAST = 7
+NORTH = 8
+NO_WEST = 9
+
 
 class Squares(Enum):
     """
     All the positions in a chess board enumerated as integers
     """
+
     a1, b1, c1, d1, e1, f1, g1, h1 = 0, 1, 2, 3, 4, 5, 6, 7
     a2, b2, c2, d2, e2, f2, g2, h2 = 8, 9, 10, 11, 12, 13, 14, 15
     a3, b3, c3, d3, e3, f3, g3, h3 = 16, 17, 18, 19, 20, 21, 22, 23
@@ -22,6 +32,7 @@ class Colors(Enum):
     """
     side of a chess piece enumerated as integers
     """
+
     BLACK = 0
     WHITE = 1
 
@@ -30,6 +41,7 @@ class Pieces(Enum):
     """
     chess pieces' type enumerated as integers
     """
+
     PAWN = 0
     ROOK = 1
     NKNIGHT = 2
@@ -77,15 +89,78 @@ class Board:
             (Pieces.KING, Colors.WHITE): 1 << Squares.e1.value,
         }
 
+    def get_empty_tiles(self):
+        """
+        get all the empty tiles in the board
+        """
+        empty_tiles = 0
+        for _, bitboard in self.bitboards.items():
+            empty_tiles |= bitboard
+        return empty_tiles
+
+    def get_white_pieces(self):
+        """
+        get all the white pieces in the board
+        """
+
+        return (
+            self.bitboards[(Pieces.PAWN, Colors.WHITE)]
+            | self.bitboards[(Pieces.ROOK, Colors.WHITE)]
+            | self.bitboards[(Pieces.NKNIGHT, Colors.WHITE)]
+            | self.bitboards[(Pieces.BISHOP, Colors.WHITE)]
+            | self.bitboards[(Pieces.QUEEN, Colors.WHITE)]
+            | self.bitboards[(Pieces.KING, Colors.WHITE)]
+        )
+
+    def get_black_pieces(self):
+        """
+        get all the black pieces in the board
+        """
+        return (
+            self.bitboards[(Pieces.PAWN, Colors.BLACK)]
+            | self.bitboards[(Pieces.ROOK, Colors.BLACK)]
+            | self.bitboards[(Pieces.NKNIGHT, Colors.BLACK)]
+            | self.bitboards[(Pieces.BISHOP, Colors.BLACK)]
+            | self.bitboards[(Pieces.QUEEN, Colors.BLACK)]
+            | self.bitboards[(Pieces.KING, Colors.BLACK)]
+        )
+
+    def generate_pawn_moves(self, piece_color: Colors):
+        """
+        generate all the possible moves for all the pawns
+        Args:
+            piece_color (Colors): _description_
+        """
+        pawn_moves = 0
+        if piece_color == Colors.WHITE:
+            # pseudo legal one step moves for pawns
+            pawn_moves |= self.bitboards[(Pieces.PAWN, Colors.WHITE)] << NORTH & ~(
+                self.get_white_pieces() | self.get_empty_tiles()
+            )
+            # pseudo legal two step moves for pawns
+            initial_pawn_row = self.bitboards[(Pieces.PAWN, Colors.WHITE)] & 0xFF00
+            pawn_moves |= initial_pawn_row << (2 * NORTH) & ~(
+                self.get_white_pieces() | self.get_empty_tiles()
+            )
+        else:
+            # pseudo legal one step moves for pawns
+            pawn_moves |= self.bitboards[(Pieces.PAWN, Colors.BLACK)] >> NORTH & ~(
+                self.get_black_pieces() | self.get_empty_tiles()
+            )
+            # pseudo legal two step moves for pawns
+            initial_pawn_row = self.bitboards[(Pieces.PAWN, Colors.BLACK)] & 0xFF00
+            pawn_moves |= initial_pawn_row >> (2 * NORTH) & ~(
+                self.get_black_pieces() | self.get_empty_tiles()
+            )
+
     def get_pieces(self, piece_type: Pieces, piece_color: Colors):
         """
         get all the pieces of a certain type and color
         Args:
-            piece_type (Pieces): the type of the piece 
+            piece_type (Pieces): the type of the piece
             piece_color (Colors): the side of the piece
         """
         return bin(self.bitboards[(piece_type, piece_color)])
-
 
     def print_board(self):
         """
@@ -117,5 +192,7 @@ class Board:
 
 
 board = Board()
-print(board.get_pieces(Pieces.PAWN, Colors.BLACK))
 
+# print(board.generate_pawn_moves(Colors.WHITE))
+board.generate_pawn_moves(Colors.WHITE)
+board.print_board()
