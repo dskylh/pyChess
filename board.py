@@ -2,6 +2,7 @@
 main board representation module
 """
 from enum import Enum
+from dataclasses import dataclass
 
 SO_WEST = -9
 SOUTH = -8
@@ -50,6 +51,25 @@ class Pieces(Enum):
     KING = 5
 
 
+@dataclass
+class Move:
+    """
+    main move representation class
+    """
+
+    piece: Pieces
+    color: Colors
+    from_square: Squares
+    to_square: Squares
+    promotion: Pieces = None
+    is_capture: bool = False
+    is_check: bool = False
+    is_checkmate: bool = False
+    is_castling: bool = False
+    is_en_passant: bool = False
+    is_stalemate: bool = False
+
+
 class Board:
     """
     main board representation class
@@ -88,8 +108,10 @@ class Board:
             (Pieces.QUEEN, Colors.WHITE): 1 << Squares.d1.value,
             (Pieces.KING, Colors.WHITE): 1 << Squares.e1.value,
         }
+        self.en_passant_target = None
+        self.last_move = None
 
-    def get_empty_tiles(self):
+    def get_all_tiles(self):
         """
         get all the empty tiles in the board
         """
@@ -125,34 +147,6 @@ class Board:
             | self.bitboards[(Pieces.KING, Colors.BLACK)]
         )
 
-    def generate_pawn_moves(self, piece_color: Colors):
-        """
-        generate all the possible moves for all the pawns
-        Args:
-            piece_color (Colors): _description_
-        """
-        pawn_moves = 0
-        if piece_color == Colors.WHITE:
-            # pseudo legal one step moves for pawns
-            pawn_moves |= self.bitboards[(Pieces.PAWN, Colors.WHITE)] << NORTH & ~(
-                self.get_white_pieces() | self.get_empty_tiles()
-            )
-            # pseudo legal two step moves for pawns
-            initial_pawn_row = self.bitboards[(Pieces.PAWN, Colors.WHITE)] & 0xFF00
-            pawn_moves |= initial_pawn_row << (2 * NORTH) & ~(
-                self.get_white_pieces() | self.get_empty_tiles()
-            )
-        else:
-            # pseudo legal one step moves for pawns
-            pawn_moves |= self.bitboards[(Pieces.PAWN, Colors.BLACK)] >> NORTH & ~(
-                self.get_black_pieces() | self.get_empty_tiles()
-            )
-            # pseudo legal two step moves for pawns
-            initial_pawn_row = self.bitboards[(Pieces.PAWN, Colors.BLACK)] & 0xFF00
-            pawn_moves |= initial_pawn_row >> (2 * NORTH) & ~(
-                self.get_black_pieces() | self.get_empty_tiles()
-            )
-
     def get_pieces(self, piece_type: Pieces, piece_color: Colors):
         """
         get all the pieces of a certain type and color
@@ -182,13 +176,69 @@ class Board:
                     print(".", end="")
             print()
 
-    def move_piece(self, start_square: Squares, end_square: Squares):
+    def move_piece(self, move: Move):
         """_summary_"""
-        for (piece_type, piece_color), bitboard in self.bitboards.items():
-            if bitboard & (1 << start_square.value):
-                self.bitboards[(piece_type, piece_color)] ^= 1 << start_square.value
-                self.bitboards[(piece_type, piece_color)] |= 1 << end_square.value
-                break
+        # pawn moves
+        _opposite_color = Colors.BLACK if move.color == Colors.WHITE else Colors.WHITE
+        if (1 << move.start_square.value) & self.get_all_tiles():
+            # check if the move is a pawn move
+            if (1 << move.start_square.value) & self.bitboards[
+                (Pieces.PAWN, move.color)
+            ]:
+                self.update_en_passant_target(move)
+
+    def generate_pawn_moves(self, piece_color: Colors):
+        """
+        generate all the possible moves for all the pawns
+        Args:
+            piece_color (Colors): _description_
+        """
+        pawn_moves = 0
+        if piece_color == Colors.WHITE:
+            # pseudo legal one step moves for pawns
+            pawn_moves |= self.bitboards[(Pieces.PAWN, Colors.WHITE)] << NORTH & ~(
+                self.get_white_pieces() | self.get_all_tiles()
+            )
+            # pseudo legal two step moves for pawns
+            initial_pawn_row = self.bitboards[(Pieces.PAWN, Colors.WHITE)] & 0xFF00
+            pawn_moves |= initial_pawn_row << (2 * NORTH) & ~(
+                self.get_white_pieces() | self.get_all_tiles()
+            )
+            # pseudo legal captures for pawns
+            
+            
+                
+        else:
+            # pseudo legal one step moves for pawns
+            pawn_moves |= self.bitboards[(Pieces.PAWN, Colors.BLACK)] >> NORTH & ~(
+                self.get_black_pieces() | self.get_all_tiles()
+            )
+            # pseudo legal two step moves for pawns
+            initial_pawn_row = self.bitboards[(Pieces.PAWN, Colors.BLACK)] & 0xFF00
+            pawn_moves |= initial_pawn_row >> (2 * NORTH) & ~(
+                self.get_black_pieces() | self.get_all_tiles()
+            )
+        return pawn_moves
+
+    def update_en_passant_target(self, move):
+        """
+        Updates the en passant target square if a pawn moves two squares forward from its starting position.
+        Args:
+            move (Move): The move to be made.
+        """
+        opposite_color = Colors.BLACK if move.color == Colors.WHITE else Colors.WHITE
+        if (
+            (1 << move.start_square.value) & self.bitboards[(Pieces.PAWN, move.color)]
+            and (1 << move.end_square.value)
+            & self.bitboards[(Pieces.PAWN, opposite_color)]
+            and abs(move.start_square.value - move.end_square.value) == NORTH * 2
+        ):
+            self.en_passant_target = (
+                move.start_square.value
+                + (move.end_square.value - move.start_square.value) // 2
+            )
+        else:
+            self.en_passant_target = None
 
 
 board = Board()
